@@ -57,6 +57,8 @@
 
         .details-table {
             width: 100%;
+            margin-left: auto;
+            align-items: center;
             border-collapse: collapse;
             background-color: #f9f9f9;
         }
@@ -70,6 +72,15 @@
         .label {
             background-color: #eee;
             width: 30%;
+            font-size: 17pt;
+        }
+
+        .value {
+            font-size: 17pt;
+        }
+
+        .price {
+            color: #d9534f;
         }
 
         @page {
@@ -114,15 +125,17 @@
             <table class="details-table">
                 <tr>
 
-                    <td>{{ $item['data']['size'] ?? '-' }}</td>
+                    <td class="value">{{ $item['data']['size'] ?? '-' }}</td>
                     <td class="label">{{ $Arabic->utf8Glyphs("المقاس") }}</td>
                 </tr>
                 <tr>
-                    <td>{{ $item['data']['unit'] ?? '-' }}</td>
+                    <td class="value">{{ $item['data']['unit'] ?? '-' }}</td>
                     <td class="label">{{ $Arabic->utf8Glyphs("الوحدة") }}</td>
                 </tr>
                 <tr>
-                    <td> {{$Arabic->utf8Glyphs("جنيه") }} {{ number_format($item['data']['price'] ?? 0, 2) }} </td>
+                    <td class="value price"> {{$Arabic->utf8Glyphs("جنيه") }}
+                        {{ number_format($item['data']['price'] ?? 0, 2) }}
+                    </td>
                     <td class="label">{{ $Arabic->utf8Glyphs("السعر") }}</td>
                 </tr>
             </table>

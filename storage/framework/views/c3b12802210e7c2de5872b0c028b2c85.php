@@ -57,6 +57,8 @@
 
         .details-table {
             width: 100%;
+            margin-left: auto;
+            align-items: center;
             border-collapse: collapse;
             background-color: #f9f9f9;
         }
@@ -70,6 +72,15 @@
         .label {
             background-color: #eee;
             width: 30%;
+            font-size: 17pt;
+        }
+
+        .value {
+            font-size: 17pt;
+        }
+
+        .price {
+            color: #d9534f;
         }
 
         @page {
@@ -114,15 +125,19 @@
             <table class="details-table">
                 <tr>
 
-                    <td><?php echo e($item['data']['size'] ?? '-'); ?></td>
+                    <td class="value"><?php echo e($item['data']['size'] ?? '-'); ?></td>
                     <td class="label"><?php echo e($Arabic->utf8Glyphs("المقاس")); ?></td>
                 </tr>
                 <tr>
-                    <td><?php echo e($item['data']['unit'] ?? '-'); ?></td>
+                    <td class="value"><?php echo e($item['data']['unit'] ?? '-'); ?></td>
                     <td class="label"><?php echo e($Arabic->utf8Glyphs("الوحدة")); ?></td>
                 </tr>
                 <tr>
-                    <td> <?php echo e($Arabic->utf8Glyphs("جنيه")); ?> <?php echo e(number_format($item['data']['price'] ?? 0, 2)); ?> </td>
+                    <td class="value price"> <?php echo e($Arabic->utf8Glyphs("جنيه")); ?>
+
+                        <?php echo e(number_format($item['data']['price'] ?? 0, 2)); ?>
+
+                    </td>
                     <td class="label"><?php echo e($Arabic->utf8Glyphs("السعر")); ?></td>
                 </tr>
             </table>
