@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\FileHelper;
+use App\Utils\Constants;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
@@ -40,7 +41,7 @@ class FileUploadController extends Controller
 
         try {
             // Check if files are present
-            if (! $request->hasFile('pdf_file') || ! $request->hasFile('excel_file')) {
+            if (!$request->hasFile('pdf_file') || !$request->hasFile('excel_file')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Both PDF and Excel files are required',
@@ -59,7 +60,7 @@ class FileUploadController extends Controller
             ]);
 
             // Check if Imagick is available
-            if (! FileHelper::hasImagick()) {
+            if (!FileHelper::hasImagick()) {
                 throw new \Exception('Imagick extension is not installed or enabled. Please install the Imagick extension to process PDF files.');
             }
 
@@ -68,7 +69,7 @@ class FileUploadController extends Controller
 
             // Create uploads directory in public if it doesn't exist
             $uploadsDir = public_path('uploads');
-            if (! file_exists($uploadsDir)) {
+            if (!file_exists($uploadsDir)) {
                 mkdir($uploadsDir, 0755, true);
             }
 
@@ -80,25 +81,21 @@ class FileUploadController extends Controller
             $excelFile = $request->file('excel_file');
 
             // Check if files are valid
-            if (! $pdfFile->isValid() || ! $excelFile->isValid()) {
+            if (!$pdfFile->isValid() || !$excelFile->isValid()) {
                 throw new \Exception('One or more uploaded files are invalid.');
             }
 
             // Move files to public/uploads directory
-            $pdfPath = $uploadsDir.'/uploaded.pdf';
-            $excelPath = $uploadsDir.'/uploaded.xlsx';
+            $pdfPath = $uploadsDir . '/uploaded.pdf';
+            $excelPath = $uploadsDir . '/uploaded.xlsx';
 
             $pdfFile->move($uploadsDir, 'uploaded.pdf');
             $excelFile->move($uploadsDir, 'uploaded.xlsx');
 
-            // Debug: Log file paths
-            Log::info('File paths', [
-                'pdf_path' => $pdfPath,
-                'excel_path' => $excelPath,
-            ]);
+
 
             // Verify files were stored successfully
-            if (! file_exists($pdfPath) || ! file_exists($excelPath)) {
+            if (!file_exists($pdfPath) || !file_exists($excelPath)) {
                 throw new \Exception('Failed to store uploaded files. Please check storage permissions.');
             }
 
@@ -107,9 +104,7 @@ class FileUploadController extends Controller
             Session::put('uploaded_excel_path', $excelPath);
 
             // Extract images from PDF
-            Log::info('Starting PDF image extraction');
             $result = FileHelper::extractImagesFromPdf($pdfPath, public_path('images'));
-            Log::info('PDF extraction result', ['result' => $result]);
 
             if ($result === false) {
                 throw new \Exception('Failed to extract images from PDF. Please ensure the PDF file is not corrupted.');
@@ -117,13 +112,13 @@ class FileUploadController extends Controller
 
             return response()->json([
                 'success' => true,
-                'redirect' => '/products',
+                'redirect' => Constants::BASE_URL . '/products',
                 'message' => 'Files uploaded and processed successfully',
             ]);
 
         } catch (\Exception $e) {
             // Log the error for debugging
-            Log::error('File upload error: '.$e->getMessage(), [
+            Log::error('File upload error: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
