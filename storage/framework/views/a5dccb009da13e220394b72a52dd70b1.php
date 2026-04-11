@@ -112,57 +112,43 @@
         pdfFile.addEventListener('change', updateFormState);
         excelFile.addEventListener('change', updateFormState);
 
-        // Handle form submission
         uploadForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
-            // Show loading overlay
             loadingOverlay.classList.remove('hidden');
-            
-            // Create FormData
+
             const formData = new FormData(uploadForm);
-            
-            // Debug: Check if files are included
-            console.log('PDF file:', formData.get('pdf_file'));
-            console.log('Excel file:', formData.get('excel_file'));
-            
-            // Submit form using fetch
+
             fetch('<?php echo e(route("upload.process")); ?>', {
                 method: 'POST',
                 body: formData,
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
             })
             .then(response => {
-                console.log('Response status:', response.status);
-                if (response.redirected) {
-                    window.location.href = response.url;
-                } else if (response.ok) {
-                    return response.json();
-                } else {
-                    return response.json().then(data => {
-                        console.error('Server error data:', data);
-                        throw new Error(data.message || 'Network response was not ok');
-                    }).catch(jsonError => {
-                        if (jsonError instanceof SyntaxError) {
-                            throw new Error('Server returned an invalid response');
-                        }
-                        throw jsonError;
-                    });
-                }
+                return response.text().then(text => {
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        throw new Error('Server error (HTTP ' + response.status + '): ' + text.substring(0, 500));
+                    }
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Upload failed');
+                    }
+                    return data;
+                });
             })
             .then(data => {
-                console.log('Success data:', data);
                 if (data && data.redirect) {
                     window.location.href = data.redirect;
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
                 loadingOverlay.classList.add('hidden');
-                alert('Error: ' + error.message + '\n\nPlease try again or contact support if the problem persists.');
+                alert('Error: ' + error.message);
             });
         });
     });

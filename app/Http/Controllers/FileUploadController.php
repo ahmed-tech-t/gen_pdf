@@ -7,7 +7,6 @@ use App\Utils\Constants;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Validator;
 
 class FileUploadController extends Controller
 {
@@ -18,49 +17,38 @@ class FileUploadController extends Controller
 
     public function upload(Request $request)
     {
-        // Temporarily disable validation for debugging
-        /*
-        $validator = Validator::make($request->all(), [
-            'pdf_file' => 'required|file|mimes:pdf',
-            'excel_file' => 'required|file|mimes:xlsx,xls',
-        ]);
+        $uploadMax = ini_get('upload_max_filesize');
+        $postMax = ini_get('post_max_size');
 
-        if ($validator->fails()) {
-            Log::error('Validation failed', [
-                'errors' => $validator->errors()->toArray(),
-                'request' => $request->all(),
-            ]);
+        if (! $request->hasFile('pdf_file') || ! $request->hasFile('excel_file')) {
+            $pdfError = $request->hasFile('pdf_file') ? 'ok' : 'missing';
+            $excelError = $request->hasFile('excel_file') ? 'ok' : 'missing';
+
+            if ($pdfError === 'missing' && $request->input('pdf_file') === null) {
+                $pdfSize = isset($_SERVER['CONTENT_LENGTH']) ? round($_SERVER['CONTENT_LENGTH'] / 1024 / 1024, 2) : 0;
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "PDF file was rejected by the server. The file may be too large for the server's upload limit (upload_max_filesize={$uploadMax}, post_max_size={$postMax}). Uploaded ~{$pdfSize}MB.",
+                ], 422);
+            }
 
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed: ' . implode(', ', $validator->errors()->all()),
-                'errors' => $validator->errors()->toArray(),
+                'message' => 'Both PDF and Excel files are required',
             ], 422);
         }
-        */
 
         try {
-            // Check if files are present
-            if (!$request->hasFile('pdf_file') || !$request->hasFile('excel_file')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Both PDF and Excel files are required',
-                ], 422);
-            }
-            // Debug: Log the request
             Log::info('File upload started', [
-                'pdf_file' => $request->hasFile('pdf_file'),
-                'excel_file' => $request->hasFile('excel_file'),
-                'pdf_name' => $request->file('pdf_file') ? $request->file('pdf_file')->getClientOriginalName() : 'none',
-                'excel_name' => $request->file('excel_file') ? $request->file('excel_file')->getClientOriginalName() : 'none',
-                'pdf_size' => $request->file('pdf_file') ? $request->file('pdf_file')->getSize() : 'none',
-                'excel_size' => $request->file('excel_file') ? $request->file('excel_file')->getSize() : 'none',
-                'pdf_mime' => $request->file('pdf_file') ? $request->file('pdf_file')->getMimeType() : 'none',
-                'excel_mime' => $request->file('excel_file') ? $request->file('excel_file')->getMimeType() : 'none',
+                'pdf_name' => $request->file('pdf_file')->getClientOriginalName(),
+                'excel_name' => $request->file('excel_file')->getClientOriginalName(),
+                'pdf_size' => $request->file('pdf_file')->getSize(),
+                'excel_size' => $request->file('excel_file')->getSize(),
             ]);
 
             // Check if Imagick is available
-            if (!FileHelper::hasImagick()) {
+            if (! FileHelper::hasImagick()) {
                 throw new \Exception('Imagick extension is not installed or enabled. Please install the Imagick extension to process PDF files.');
             }
 
@@ -69,7 +57,7 @@ class FileUploadController extends Controller
 
             // Create uploads directory in public if it doesn't exist
             $uploadsDir = public_path('uploads');
-            if (!file_exists($uploadsDir)) {
+            if (! file_exists($uploadsDir)) {
                 mkdir($uploadsDir, 0755, true);
             }
 
@@ -81,21 +69,19 @@ class FileUploadController extends Controller
             $excelFile = $request->file('excel_file');
 
             // Check if files are valid
-            if (!$pdfFile->isValid() || !$excelFile->isValid()) {
+            if (! $pdfFile->isValid() || ! $excelFile->isValid()) {
                 throw new \Exception('One or more uploaded files are invalid.');
             }
 
             // Move files to public/uploads directory
-            $pdfPath = $uploadsDir . '/uploaded.pdf';
-            $excelPath = $uploadsDir . '/uploaded.xlsx';
+            $pdfPath = $uploadsDir.'/uploaded.pdf';
+            $excelPath = $uploadsDir.'/uploaded.xlsx';
 
             $pdfFile->move($uploadsDir, 'uploaded.pdf');
             $excelFile->move($uploadsDir, 'uploaded.xlsx');
 
-
-
             // Verify files were stored successfully
-            if (!file_exists($pdfPath) || !file_exists($excelPath)) {
+            if (! file_exists($pdfPath) || ! file_exists($excelPath)) {
                 throw new \Exception('Failed to store uploaded files. Please check storage permissions.');
             }
 
@@ -112,13 +98,13 @@ class FileUploadController extends Controller
 
             return response()->json([
                 'success' => true,
-                'redirect' => Constants::BASE_URL . '/products',
+                'redirect' => Constants::BASE_URL.'/products',
                 'message' => 'Files uploaded and processed successfully',
             ]);
 
         } catch (\Exception $e) {
             // Log the error for debugging
-            Log::error('File upload error: ' . $e->getMessage(), [
+            Log::error('File upload error: '.$e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
