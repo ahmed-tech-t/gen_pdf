@@ -79,11 +79,9 @@ class ProductPdfController extends Controller
         $Arabic = new Arabic;
 
         foreach ($products as &$item) {
-            if (isset($item['data']['description'])) {
-                $item['data']['description'] = $item['data']['description'] ? $Arabic->utf8Glyphs($item['data']['description']) : $item['data']['code'];
-                $item['data']['size'] = $Arabic->utf8Glyphs($item['data']['size']);
-                $item['data']['unit'] = $Arabic->utf8Glyphs($item['data']['unit']);
-            }
+            $item['data']['description'] = $item['data']['description'] ? $Arabic->utf8Glyphs($item['data']['description']) : $item['data']['code'];
+            $item['data']['size'] = $Arabic->utf8Glyphs($item['data']['size']);
+            $item['data']['unit'] = $Arabic->utf8Glyphs($item['data']['unit']);
         }
 
         $pdf = Pdf::loadView('products.pdf', compact('products', 'Arabic'))
