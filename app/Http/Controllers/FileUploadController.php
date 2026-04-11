@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\FileHelper;
-use App\Utils\Constants;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
@@ -98,7 +97,7 @@ class FileUploadController extends Controller
 
             return response()->json([
                 'success' => true,
-                'redirect' => Constants::BASE_URL.'/products',
+                'redirect' => route('products.index'),
                 'message' => 'Files uploaded and processed successfully',
             ]);
 
