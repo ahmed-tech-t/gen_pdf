@@ -60,7 +60,7 @@ class ProductPdfController extends Controller
                 'chroot' => base_path(),   // Allow access to storage folder
             ]);
 
-        $filename = 'catalog-'.time().'.pdf';
+        $filename = 'catalog-' . time() . '.pdf';
         if (ob_get_length()) {
             ob_end_clean();
         }
@@ -80,7 +80,7 @@ class ProductPdfController extends Controller
 
         foreach ($products as &$item) {
             if (isset($item['data']['description'])) {
-                $item['data']['description'] = $Arabic->utf8Glyphs($item['data']['description']);
+                $item['data']['description'] = $item['data']['description'] ? $Arabic->utf8Glyphs($item['data']['description']) : $item['data']['code'];
                 $item['data']['size'] = $Arabic->utf8Glyphs($item['data']['size']);
                 $item['data']['unit'] = $Arabic->utf8Glyphs($item['data']['unit']);
             }
@@ -96,7 +96,7 @@ class ProductPdfController extends Controller
                 'chroot' => base_path(),
             ]);
 
-        $filename = 'catalog-'.time().'.pdf';
+        $filename = 'catalog-' . time() . '.pdf';
         if (ob_get_length()) {
             ob_end_clean();
         }
@@ -149,6 +149,9 @@ class ProductPdfController extends Controller
                     case 'E':
                         $data['price'] = $value;
                         break;
+                    case 'F':
+                        $data['code'] = $value;
+                        break;
                     case 'G':
                         $data['pdf_description'] = $value;
                         break;
@@ -180,7 +183,7 @@ class ProductPdfController extends Controller
         $uploadsDir = public_path('uploads');
 
         if (is_dir($uploadsDir)) {
-            $files = glob($uploadsDir.'/*');
+            $files = glob($uploadsDir . '/*');
             foreach ($files as $file) {
                 if (is_file($file)) {
                     unlink($file);
