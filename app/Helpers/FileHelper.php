@@ -35,29 +35,33 @@ class FileHelper
             throw new \Exception('Imagick extension is not installed or enabled');
         }
 
-        // Create output directory if it doesn't exist
         if (! file_exists($outputDir)) {
             mkdir($outputDir, 0755, true);
         }
 
-        // Clear existing images
         self::clearDirectory($outputDir);
 
         try {
             $imagick = new \Imagick;
-            $imagick->setResolution(150, 150);
+            $imagick->setResolution(120, 120);
             $imagick->readImage($pdfPath);
             $pageCount = $imagick->getNumberImages();
 
-            for ($i = 0; $i < $pageCount; $i++) {
-                $imagick->setIteratorIndex($i);
-                $outputPath = $outputDir.'/page_'.($i + 1).'.jpg';
-                $imagick->setImageFormat('jpeg');
-                $imagick->writeImage($outputPath);
-            }
-
             $imagick->clear();
             $imagick->destroy();
+            unset($imagick);
+
+            for ($i = 1; $i <= $pageCount; $i++) {
+                $pageImagick = new \Imagick;
+                $pageImagick->setResolution(120, 120);
+                $pageImagick->readImage($pdfPath.'['.($i - 1).']');
+                $pageImagick->setImageFormat('jpeg');
+                $pageImagick->setImageCompressionQuality(80);
+                $pageImagick->writeImage($outputDir.'/page_'.$i.'.jpg');
+                $pageImagick->clear();
+                $pageImagick->destroy();
+                unset($pageImagick);
+            }
 
             return $pageCount;
 
