@@ -13,7 +13,7 @@
         @endif
 
         @if(isset($product['price']) && $product['price'])
-            <p><strong>السعر:</strong> {{ number_format($product['price'], 2) }} جنيه</p>
+            <p><strong>السعر:</strong> {{ number_format((float) $product['price'], 2) }} جنيه</p>
         @endif
     </div>
 </div>

@@ -6,6 +6,7 @@ use App\Helpers\FileHelper;
 use App\Services\PdfImageExtractor;
 use ArPHP\I18N\Arabic;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -28,6 +29,7 @@ class ProductPdfController extends Controller
     public function index()
     {
         $products = $this->processData();
+        Log::info('Processed products data', ['products' => $products]);
 
         return view('products.index', [
             'products' => $products,
@@ -60,7 +62,7 @@ class ProductPdfController extends Controller
                 'chroot' => base_path(),   // Allow access to storage folder
             ]);
 
-        $filename = 'catalog-' . time() . '.pdf';
+        $filename = $this->getFilename();
         if (ob_get_length()) {
             ob_end_clean();
         }
@@ -94,7 +96,7 @@ class ProductPdfController extends Controller
                 'chroot' => base_path(),
             ]);
 
-        $filename = 'catalog-' . time() . '.pdf';
+        $filename = $this->getFilename();
         if (ob_get_length()) {
             ob_end_clean();
         }
@@ -107,6 +109,13 @@ class ProductPdfController extends Controller
 
         // Download the PDF
         return $pdf->download($filename);
+    }
+
+    private function getFilename()
+    {
+        $excelName = Session::get('uploaded_excel_name', pathinfo($this->excelPath, PATHINFO_FILENAME));
+
+        return $excelName.'_catalog.pdf';
     }
 
     private function processData()
@@ -129,7 +138,15 @@ class ProductPdfController extends Controller
             $data = [];
             foreach ($cellIterator as $cell) {
                 $column = $cell->getColumn();
-                $value = $cell->getValue();
+                if ($cell->isFormula()) {
+                    try {
+                        $value = $cell->getCalculatedValue();
+                    } catch (\Throwable $e) {
+                        $value = $cell->getOldCalculatedValue() ?? $cell->getValue();
+                    }
+                } else {
+                    $value = $cell->getValue();
+                }
 
                 switch ($column) {
                     case 'A':
@@ -181,7 +198,7 @@ class ProductPdfController extends Controller
         $uploadsDir = public_path('uploads');
 
         if (is_dir($uploadsDir)) {
-            $files = glob($uploadsDir . '/*');
+            $files = glob($uploadsDir.'/*');
             foreach ($files as $file) {
                 if (is_file($file)) {
                     unlink($file);

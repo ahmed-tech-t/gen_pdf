@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // After a short delay, redirect to landing page
         setTimeout(function() {
-            window.location.href = '/';
+            window.location.href = '/gen_pdf';
         }, 2000);
     });
 });

@@ -11,6 +11,9 @@ class FileUploadController extends Controller
 {
     public function index()
     {
+        FileHelper::clearDirectory(public_path('images'));
+        $this->cleanupUploadedFiles();
+
         return view('landing.index');
     }
 
@@ -28,7 +31,9 @@ class FileUploadController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => "PDF file was rejected by the server. The file may be too large for the server's upload limit (upload_max_filesize={$uploadMax}, post_max_size={$postMax}). Uploaded ~{$pdfSize}MB.",
+                    'message' => "PDF file was rejected by the server. 
+                    The file may be too large for the server's upload limit (upload_max_filesize={$uploadMax}, 
+                    post_max_size={$postMax}). Uploaded ~{$pdfSize}MB.",
                 ], 422);
             }
 
@@ -84,9 +89,12 @@ class FileUploadController extends Controller
                 throw new \Exception('Failed to store uploaded files. Please check storage permissions.');
             }
 
+            $excelOriginalName = pathinfo($excelFile->getClientOriginalName(), PATHINFO_FILENAME);
+
             // Store file paths in session for ProductPdfController to use
             Session::put('uploaded_pdf_path', $pdfPath);
             Session::put('uploaded_excel_path', $excelPath);
+            Session::put('uploaded_excel_name', $excelOriginalName);
 
             // Extract images from PDF
             $result = FileHelper::extractImagesFromPdf($pdfPath, public_path('images'));
@@ -114,5 +122,25 @@ class FileUploadController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function cleanupUploadedFiles()
+    {
+        // Clean up the uploaded files from public/uploads directory
+        $uploadsDir = public_path('uploads');
+
+        if (is_dir($uploadsDir)) {
+            $files = glob($uploadsDir.'/*');
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    unlink($file);
+                }
+            }
+        }
+
+        // Also clear session data
+        Session::forget('uploaded_pdf_path');
+        Session::forget('uploaded_excel_path');
+        Session::forget('uploaded_excel_name');
     }
 }

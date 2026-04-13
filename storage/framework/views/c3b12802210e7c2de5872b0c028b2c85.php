@@ -32,6 +32,10 @@
             width: 100%;
         }
 
+        .product-page:last-child {
+            page-break-after: auto;
+        }
+
         .title {
             text-align: center;
             font-size: 24pt;
@@ -135,7 +139,7 @@
                 <tr>
                     <td class="value price"> <?php echo e($Arabic->utf8Glyphs("جنيه")); ?>
 
-                        <?php echo e(number_format($item['data']['price'] ?? 0, 2)); ?>
+                        <?php echo e(number_format((float) ($item['data']['price'] ?? 0), 2)); ?>
 
                     </td>
                     <td class="label"><?php echo e($Arabic->utf8Glyphs("السعر")); ?></td>

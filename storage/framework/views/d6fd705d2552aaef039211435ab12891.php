@@ -41,7 +41,7 @@ unset($__defined_vars, $__key, $__value); ?>
         <?php endif; ?>
 
         <?php if(isset($product['price']) && $product['price']): ?>
-            <p><strong>السعر:</strong> <?php echo e(number_format($product['price'], 2)); ?> جنيه</p>
+            <p><strong>السعر:</strong> <?php echo e(number_format((float) $product['price'], 2)); ?> جنيه</p>
         <?php endif; ?>
     </div>
 </div><?php /**PATH /home/scorpion/Desktop/gen pdf file/resources/views/components/product-details.blade.php ENDPATH**/ ?>
