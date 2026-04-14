@@ -4,12 +4,6 @@ namespace App\Helpers;
 
 class FileHelper
 {
-    /**
-     * Clear all files in a directory
-     *
-     * @param  string  $directory
-     * @return void
-     */
     public static function clearDirectory($directory)
     {
         if (is_dir($directory)) {
@@ -22,13 +16,18 @@ class FileHelper
         }
     }
 
-    /**
-     * Extract images from PDF file using Imagick
-     *
-     * @param  string  $pdfPath
-     * @param  string  $outputDir
-     * @return int|false Number of pages extracted or false on failure
-     */
+    public static function getPageCount($pdfPath)
+    {
+        $imagick = new \Imagick;
+        $imagick->pingImage($pdfPath);
+        $pageCount = $imagick->getNumberImages();
+        $imagick->clear();
+        $imagick->destroy();
+        unset($imagick);
+
+        return $pageCount;
+    }
+
     public static function extractImagesFromPdf($pdfPath, $outputDir)
     {
         if (! extension_loaded('imagick') || ! class_exists('Imagick')) {
@@ -42,14 +41,7 @@ class FileHelper
         self::clearDirectory($outputDir);
 
         try {
-            $imagick = new \Imagick;
-            $imagick->setResolution(120, 120);
-            $imagick->readImage($pdfPath);
-            $pageCount = $imagick->getNumberImages();
-
-            $imagick->clear();
-            $imagick->destroy();
-            unset($imagick);
+            $pageCount = self::getPageCount($pdfPath);
 
             for ($i = 1; $i <= $pageCount; $i++) {
                 $pageImagick = new \Imagick;
@@ -61,6 +53,10 @@ class FileHelper
                 $pageImagick->clear();
                 $pageImagick->destroy();
                 unset($pageImagick);
+
+                if ($i % 10 === 0) {
+                    gc_collect_cycles();
+                }
             }
 
             return $pageCount;
@@ -70,22 +66,11 @@ class FileHelper
         }
     }
 
-    /**
-     * Check if Imagick extension is available
-     *
-     * @return bool
-     */
     public static function hasImagick()
     {
         return extension_loaded('imagick') && class_exists('Imagick');
     }
 
-    /**
-     * Get file size in human readable format
-     *
-     * @param  string  $filePath
-     * @return string
-     */
     public static function getFileSize($filePath)
     {
         if (! file_exists($filePath)) {
@@ -104,12 +89,6 @@ class FileHelper
         return round($bytes / pow(1024, $exponent), 2).' '.$units[$exponent];
     }
 
-    /**
-     * Validate file type
-     *
-     * @param  string  $filePath
-     * @return bool
-     */
     public static function validateFileType($filePath, array $allowedMimeTypes)
     {
         if (! file_exists($filePath)) {
@@ -121,19 +100,10 @@ class FileHelper
         return in_array($mimeType, $allowedMimeTypes);
     }
 
-    /**
-     * Create a secure filename
-     *
-     * @param  string  $filename
-     * @return string
-     */
     public static function createSecureFilename($filename)
     {
-        // Remove special characters and spaces
         $filename = preg_replace('/[^a-zA-Z0-9\-._]/', '', $filename);
         $filename = preg_replace('/\s+/', '_', $filename);
-
-        // Convert to lowercase
         $filename = strtolower($filename);
 
         return $filename;

@@ -90,11 +90,12 @@ class FileUploadController extends Controller
             }
 
             $excelOriginalName = pathinfo($excelFile->getClientOriginalName(), PATHINFO_FILENAME);
+            $pdfOriginalName = pathinfo($pdfFile->getClientOriginalName(), PATHINFO_FILENAME);
 
-            // Store file paths in session for ProductPdfController to use
             Session::put('uploaded_pdf_path', $pdfPath);
             Session::put('uploaded_excel_path', $excelPath);
             Session::put('uploaded_excel_name', $excelOriginalName);
+            Session::put('uploaded_pdf_name', $pdfOriginalName);
 
             // Extract images from PDF
             $result = FileHelper::extractImagesFromPdf($pdfPath, public_path('images'));

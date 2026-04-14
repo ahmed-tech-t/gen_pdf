@@ -38,8 +38,8 @@ class ProductPdfController extends Controller
 
     public function downloadPdf()
     {
-        // 1. Get your data
         $products = $this->processData();
+        $this->loadBase64Images($products);
         $Arabic = new Arabic;
         // 2. Load the view and set paper/options
 
@@ -76,8 +76,8 @@ class ProductPdfController extends Controller
 
     public function downloadAndReset()
     {
-        // Generate PDF
         $products = $this->processData();
+        $this->loadBase64Images($products);
         $Arabic = new Arabic;
 
         foreach ($products as &$item) {
@@ -113,24 +113,22 @@ class ProductPdfController extends Controller
 
     private function getFilename()
     {
-        $excelName = Session::get('uploaded_excel_name', pathinfo($this->excelPath, PATHINFO_FILENAME));
+        $pdfName = Session::get('uploaded_pdf_name', pathinfo($this->pdfPath, PATHINFO_FILENAME));
 
-        return $excelName.'_catalog.pdf';
+        return $pdfName.'_Catalog.pdf';
     }
 
     private function processData()
     {
-        // Read Excel file
         $spreadsheet = IOFactory::load($this->excelPath);
         $worksheet = $spreadsheet->getActiveSheet();
 
         $products = [];
 
-        // Start from row 2 (skip header)
         foreach ($worksheet->getRowIterator() as $index => $row) {
             if ($index == 1) {
                 continue;
-            } // Skip header row
+            }
 
             $cellIterator = $row->getCellIterator();
             $cellIterator->setIterateOnlyExistingCells(false);
@@ -174,12 +172,13 @@ class ProductPdfController extends Controller
             }
 
             if (isset($data['page']) && $data['page']) {
-                // Extract image from PDF
-                $image = $this->extractImageFromPdf($data['page']);
+                $imageUrl = $this->pdfImageExtractor->getImageUrl($data['page']);
+                $imagePath = $this->pdfImageExtractor->getImagePath($data['page']);
 
                 $products[] = [
                     'data' => $data,
-                    'image' => $image,
+                    'image' => $imageUrl,
+                    'image_path' => $imagePath,
                 ];
             }
         }
@@ -187,9 +186,19 @@ class ProductPdfController extends Controller
         return $products;
     }
 
-    private function extractImageFromPdf($pageNumber)
+    private function loadBase64Images(&$products)
     {
-        return $this->pdfImageExtractor->extractPageAsImage($pageNumber);
+        foreach ($products as &$item) {
+            $path = $item['image_path'];
+            if ($path && file_exists($path)) {
+                $data = file_get_contents($path);
+                $item['image_base64'] = 'data:image/jpeg;base64,'.base64_encode($data);
+                unset($data);
+            } else {
+                $item['image_base64'] = null;
+            }
+        }
+        gc_collect_cycles();
     }
 
     private function cleanupUploadedFiles()

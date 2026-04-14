@@ -121,8 +121,8 @@
             <h1 class="title"><?php echo e($item['data']['description'] ?? 'Product'); ?></h1>
 
             <div class="image-container">
-                <?php if($item['image']): ?>
-                    <img src="data:image/jpeg;base64,<?php echo e($item['image']); ?>" class="full-image">
+                <?php if($item['image_base64']): ?>
+                    <img src="<?php echo e($item['image_base64']); ?>" class="full-image">
                 <?php endif; ?>
             </div>
 

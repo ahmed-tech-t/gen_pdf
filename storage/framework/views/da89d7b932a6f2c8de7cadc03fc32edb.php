@@ -31,7 +31,7 @@ unset($__defined_vars, $__key, $__value); ?>
 <div class="product-card bg-white rounded-lg shadow-md overflow-hidden">
     <div class="aspect-w-16 aspect-h-9 bg-gray-100">
         <?php if($image): ?>
-            <img src="data:image/jpeg;base64,<?php echo e($image); ?>" alt="<?php echo e($product['description'] ?? ''); ?>"
+            <img src="<?php echo e($image); ?>" alt="<?php echo e($product['description'] ?? ''); ?>"
                 class="w-full h-48 object-contain">
         <?php else: ?>
             <div class="product-image-placeholder">
