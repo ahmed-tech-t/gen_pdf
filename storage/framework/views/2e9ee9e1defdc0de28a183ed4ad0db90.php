@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <style>
+        @page {
+            margin: 1cm;
+        }
+
+
+        @font-face {
+            font-family: 'ArialCustom';
+            src: url("<?php echo e(storage_path('fonts/arial.ttf')); ?>") format("truetype");
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body {
+            font-family: 'ArialCustom', sans-serif;
+            direction: ltr;
+            /* Ar-PHP handles the RTL reversal */
+            text-align: right;
+            margin: 0;
+            padding: 0;
+            margin-bottom: 50px;
+        }
+
+        .product-page {
+            page-break-after: always;
+            width: 100%;
+        }
+
+        .product-page:last-child {
+            page-break-after: auto;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 24pt;
+            font-weight: normal;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .image-container {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* This forces the image to fill the width */
+        .full-image {
+            width: 100%;
+            height: auto;
+            max-height: 500px;
+            /* Adjust this so it doesn't push data to next page */
+        }
+
+        .details-table {
+            width: 100%;
+            margin-left: auto;
+            align-items: center;
+            border-collapse: collapse;
+            background-color: #f9f9f9;
+        }
+
+        .details-table td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: right;
+        }
+
+        .label {
+            background-color: #eee;
+            width: 30%;
+            font-size: 17pt;
+        }
+
+        .value {
+            font-size: 17pt;
+        }
+
+        .price {
+            color: #d9534f;
+        }
+
+        @page {
+            margin: 1cm;
+        }
+
+        footer {
+            position: fixed;
+            bottom: -10px;
+            left: 0px;
+            right: 0px;
+            height: 50px;
+            text-align: center;
+        }
+
+        /* Create a counter for the pages */
+        .page-number:after {
+            content: counter(page) " <?php echo e($Arabic->utf8Glyphs("الصفحة")); ?> ";
+        }
+    </style>
+
+
+</head>
+
+<body>
+
+    <footer>
+        <span class="page-number"></span>
+    </footer>
+
+    <?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+
+        <div class="product-page">
+            <h1 class="title"><?php echo e($item['data']['description'] ?? 'Product'); ?></h1>
+
+            <div class="image-container">
+                <?php if($item['image_base64']): ?>
+                    <img src="<?php echo e($item['image_base64']); ?>" class="full-image">
+                <?php endif; ?>
+            </div>
+
+            <table class="details-table">
+                <tr>
+
+                    <td class="value"><?php echo e($item['data']['size'] ?? '-'); ?></td>
+                    <td class="label"><?php echo e($Arabic->utf8Glyphs("المقاس")); ?></td>
+                </tr>
+                <tr>
+                    <td class="value"><?php echo e($item['data']['unit'] ?? '-'); ?></td>
+                    <td class="label"><?php echo e($Arabic->utf8Glyphs("الوحدة")); ?></td>
+                </tr>
+                <tr>
+                    <td class="value price"> <?php echo e($Arabic->utf8Glyphs("جنيه")); ?>
+
+                        <?php echo e(number_format((float) ($item['data']['price'] ?? 0), 2)); ?>
+
+                    </td>
+                    <td class="label"><?php echo e($Arabic->utf8Glyphs("السعر")); ?></td>
+                </tr>
+            </table>
+
+
+        </div>
+    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+</body>
+
+
+</html><?php /**PATH G:\projects\laravel\gen_pdf\gen_pdf\resources\views/products/pdf.blade.php ENDPATH**/ ?>

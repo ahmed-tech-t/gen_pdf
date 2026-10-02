@@ -40,19 +40,63 @@ class FileHelper
 
         self::clearDirectory($outputDir);
 
+        $totalStart = microtime(true);
+        $gsExe = self::findGhostscript();
+
+        if ($gsExe) {
+            $pageCount = self::extractWithGhostscript($pdfPath, $outputDir, $gsExe);
+        } else {
+            $pageCount = self::extractWithImagick($pdfPath, $outputDir);
+        }
+
+        \Illuminate\Support\Facades\Log::info('PDF extraction complete', [
+            'pages' => $pageCount,
+            'method' => $gsExe ? 'ghostscript' : 'imagick',
+            'total_ms' => round((microtime(true) - $totalStart) * 1000),
+        ]);
+
+        return $pageCount;
+    }
+
+    private static function extractWithGhostscript($pdfPath, $outputDir, $gsExe)
+    {
+        $outputPattern = $outputDir.DIRECTORY_SEPARATOR.'page_%d.jpg';
+        $cmd = self::quoteArg($gsExe)
+            .' -dBATCH -dNOPAUSE -dSAFER -sDEVICE=jpeg -r72 -dJPEGQ=65'
+            .' -sOutputFile='.self::quoteArg($outputPattern)
+            .' '.self::quoteArg($pdfPath);
+
+        \Illuminate\Support\Facades\Log::info('GS command', ['cmd' => $cmd]);
+
+        exec($cmd.' 2>&1', $output, $exitCode);
+
+        if ($exitCode !== 0) {
+            $detail = implode("\n", array_slice($output, -5));
+            throw new \Exception('Ghostscript failed (exit '.$exitCode.'): '.$detail);
+        }
+
+        $pages = glob($outputDir.'/page_*.jpg');
+
+        return $pages ? count($pages) : 0;
+    }
+
+    private static function extractWithImagick($pdfPath, $outputDir)
+    {
         try {
             $pageCount = self::getPageCount($pdfPath);
 
-            for ($i = 1; $i <= $pageCount; $i++) {
-                $pageImagick = new \Imagick;
-                $pageImagick->setResolution(120, 120);
-                $pageImagick->readImage($pdfPath.'['.($i - 1).']');
-                $pageImagick->setImageFormat('jpeg');
-                $pageImagick->setImageCompressionQuality(80);
-                $pageImagick->writeImage($outputDir.'/page_'.$i.'.jpg');
-                $pageImagick->clear();
-                $pageImagick->destroy();
-                unset($pageImagick);
+            for ($i = 0; $i < $pageCount; $i++) {
+                $page = new \Imagick;
+                $page->setResolution(72, 72);
+                $page->readImage($pdfPath.'['.$i.']');
+                $page->setImageBackgroundColor('white');
+                $flattened = $page->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+                $flattened->setImageFormat('jpeg');
+                $flattened->setImageCompressionQuality(65);
+                $flattened->writeImage($outputDir.'/page_'.($i + 1).'.jpg');
+                $flattened->clear(); $flattened->destroy();
+                $page->clear(); $page->destroy();
+                unset($flattened, $page);
 
                 if ($i % 10 === 0) {
                     gc_collect_cycles();
@@ -60,10 +104,57 @@ class FileHelper
             }
 
             return $pageCount;
-
         } catch (\Exception $e) {
             throw new \Exception('Error extracting images: '.$e->getMessage());
         }
+    }
+
+    private static function findGhostscript()
+    {
+        // 1. ENV override
+        $env = env('GHOSTSCRIPT_PATH');
+        if ($env && file_exists($env)) {
+            return $env;
+        }
+
+        // 2. PATH lookup
+        $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+        if ($isWindows) {
+            $found = trim((string) shell_exec('where gswin64c 2>NUL'));
+            if ($found && file_exists(strtok($found, "\n"))) {
+                return strtok($found, "\n");
+            }
+            $found = trim((string) shell_exec('where gswin32c 2>NUL'));
+            if ($found && file_exists(strtok($found, "\n"))) {
+                return strtok($found, "\n");
+            }
+        } else {
+            $found = trim((string) shell_exec('which gs 2>/dev/null'));
+            if ($found && file_exists($found)) {
+                return $found;
+            }
+        }
+
+        // 3. Common Windows paths
+        $candidates = [
+            'C:\\Ghostscript\\bin\\gswin64c.exe',
+            'C:\\Program Files\\gs\\bin\\gswin64c.exe',
+        ];
+        foreach (glob('C:\\Program Files\\gs\\gs*\\bin\\gswin64c.exe') ?: [] as $p) {
+            $candidates[] = $p;
+        }
+        foreach ($candidates as $path) {
+            if (file_exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    private static function quoteArg($s)
+    {
+        return '"'.str_replace('"', '\\"', $s).'"';
     }
 
     public static function hasImagick()

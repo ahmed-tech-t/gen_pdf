@@ -107,22 +107,87 @@ class FileUploadController extends Controller
             return response()->json([
                 'success' => true,
                 'redirect' => route('products.index'),
-                'message' => 'Files uploaded and processed successfully',
             ]);
 
         } catch (\Exception $e) {
-            // Log the error for debugging
             Log::error('File upload error: '.$e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    public function processLocalPaths(Request $request)
+    {
+        $pdfPath = $request->input('pdf_path');
+        $excelPath = $request->input('excel_path');
+
+        if (! $pdfPath || ! $excelPath) {
+            return response()->json(['success' => false, 'message' => 'Both paths are required'], 422);
+        }
+        if (! file_exists($pdfPath) || ! is_file($pdfPath)) {
+            return response()->json(['success' => false, 'message' => 'PDF file not found: '.$pdfPath], 422);
+        }
+        if (! file_exists($excelPath) || ! is_file($excelPath)) {
+            return response()->json(['success' => false, 'message' => 'Excel file not found: '.$excelPath], 422);
+        }
+        if (strtolower(pathinfo($pdfPath, PATHINFO_EXTENSION)) !== 'pdf') {
+            return response()->json(['success' => false, 'message' => 'The first file must be a PDF'], 422);
+        }
+        if (! in_array(strtolower(pathinfo($excelPath, PATHINFO_EXTENSION)), ['xlsx', 'xls'])) {
+            return response()->json(['success' => false, 'message' => 'The second file must be an Excel file'], 422);
+        }
+
+        try {
+            if (! FileHelper::hasImagick()) {
+                throw new \Exception('Imagick extension is not installed or enabled.');
+            }
+
+            FileHelper::clearDirectory(public_path('images'));
+
+            $result = FileHelper::extractImagesFromPdf($pdfPath, public_path('images'));
+            if ($result === false) {
+                throw new \Exception('Failed to extract images from PDF.');
+            }
+
+            Session::put('uploaded_pdf_path', $pdfPath);
+            Session::put('uploaded_excel_path', $excelPath);
+            Session::put('uploaded_excel_name', pathinfo($excelPath, PATHINFO_FILENAME));
+            Session::put('uploaded_pdf_name', pathinfo($pdfPath, PATHINFO_FILENAME));
+
+            return response()->json([
+                'success' => true,
+                'redirect' => route('products.index'),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Local path processing error: '.$e->getMessage());
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function browse(Request $request)
+    {
+        $type = $request->query('type', 'pdf');
+        $filter = $type === 'pdf'
+            ? 'PDF Files (*.pdf)|*.pdf'
+            : 'Excel Files (*.xlsx;*.xls)|*.xlsx;*.xls';
+
+        $ps = 'Add-Type -AssemblyName System.Windows.Forms; '
+            . '$d = New-Object System.Windows.Forms.OpenFileDialog; '
+            . '$d.Filter = \'' . addslashes($filter) . '\'; '
+            . 'if ($d.ShowDialog() -eq \'OK\') { $d.FileName }';
+
+        $path = trim((string) shell_exec('powershell -NonInteractive -Command "' . $ps . '"'));
+
+        if ($path === '') {
+            return response()->json(['cancelled' => true]);
+        }
+
+        return response()->json(['path' => $path]);
     }
 
     private function cleanupUploadedFiles()
