@@ -4,13 +4,6 @@ namespace App\Services;
 
 class PdfImageExtractor
 {
-    protected $pdfPath;
-
-    public function __construct($pdfPath)
-    {
-        $this->pdfPath = $pdfPath;
-    }
-
     public function getImageUrl($pageNumber)
     {
         $imagePath = public_path('images/page_'.$pageNumber.'.jpg');

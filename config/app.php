@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Catalog Folder
+    |--------------------------------------------------------------------------
+    |
+    | Folder on this machine whose PDF and Excel files are offered on the
+    | landing page. Selected files are read in place instead of uploaded.
+    |
+    */
+
+    'catalog_dir' => env('CATALOG_DIR', (getenv('USERPROFILE') ?: getenv('HOME')).DIRECTORY_SEPARATOR.'Downloads'),
+
 ];

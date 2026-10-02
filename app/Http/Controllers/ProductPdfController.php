@@ -14,22 +14,22 @@ class ProductPdfController extends Controller
 {
     protected $excelPath;
 
-    protected $pdfPath;
-
     protected $pdfImageExtractor;
 
     public function __construct()
     {
-        // Use uploaded file paths from session, or fall back to defaults
-        $this->excelPath = Session::get('uploaded_excel_path', app_path('src/file.xlsx'));
-        $this->pdfPath = Session::get('uploaded_pdf_path', app_path('src/Luminarc.pdf'));
-        $this->pdfImageExtractor = new PdfImageExtractor($this->pdfPath);
+        $this->excelPath = Session::get('uploaded_excel_path', public_path('uploads/uploaded.xlsx'));
+        $this->pdfImageExtractor = new PdfImageExtractor;
     }
 
     public function index()
     {
+        if (! file_exists($this->excelPath)) {
+            return $this->redirectToUpload();
+        }
+
         $products = $this->processData();
-        Log::info('Processed products data', ['products' => $products]);
+        Log::info('Processed products data', ['count' => count($products)]);
 
         return view('products.index', [
             'products' => $products,
@@ -38,89 +38,89 @@ class ProductPdfController extends Controller
 
     public function downloadPdf()
     {
-        $products = $this->processData();
-        $this->loadBase64Images($products);
-        $Arabic = new Arabic;
-        // 2. Load the view and set paper/options
-
-        foreach ($products as &$item) {
-            if (isset($item['data']['description'])) {
-                // utf8Glyphs joins the letters and reverses them for RTL
-                $item['data']['description'] = $Arabic->utf8Glyphs($item['data']['description']);
-                $item['data']['size'] = $Arabic->utf8Glyphs($item['data']['size']);
-                $item['data']['unit'] = $Arabic->utf8Glyphs($item['data']['unit']);
-            }
-            // Repeat this for any other Arabic fields like 'unit' or 'category'
+        if (! file_exists($this->excelPath)) {
+            return $this->redirectToUpload();
         }
-        $pdf = Pdf::loadView('products.pdf', compact('products', 'Arabic'))
-            ->setPaper('a4', 'portrait')
-            ->setOptions([
-                'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => true,
-                'isPhpEnabled' => true,
-                'defaultFont' => 'serif', // Fallback
-                'chroot' => base_path(),   // Allow access to storage folder
-            ]);
+
+        $pdf = $this->buildPdf($this->processData());
 
         $filename = $this->getFilename();
         if (ob_get_length()) {
             ob_end_clean();
         }
 
-        // Clear the images directory after PDF generation
+        $response = $pdf->download($filename);
+
         FileHelper::clearDirectory(public_path('images'));
 
-        // 3. Return as a download
-        return $pdf->download($filename);
+        return $response;
     }
 
     public function downloadAndReset()
     {
-        $products = $this->processData();
-        $this->loadBase64Images($products);
-        $Arabic = new Arabic;
-
-        foreach ($products as &$item) {
-            $item['data']['description'] = $item['data']['description'] ? $Arabic->utf8Glyphs($item['data']['description']) : $item['data']['code'];
-            $item['data']['size'] = $Arabic->utf8Glyphs($item['data']['size']);
-            $item['data']['unit'] = $Arabic->utf8Glyphs($item['data']['unit']);
+        if (! file_exists($this->excelPath)) {
+            return $this->redirectToUpload();
         }
 
-        $pdf = Pdf::loadView('products.pdf', compact('products', 'Arabic'))
-            ->setPaper('a4', 'portrait')
-            ->setOptions([
-                'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => true,
-                'isPhpEnabled' => true,
-                'defaultFont' => 'serif',
-                'chroot' => base_path(),
-            ]);
+        $pdf = $this->buildPdf($this->processData());
 
         $filename = $this->getFilename();
         if (ob_get_length()) {
             ob_end_clean();
         }
 
-        // Clear the images directory after PDF generation
-        FileHelper::clearDirectory(public_path('images'));
+        $response = $pdf->download($filename);
 
-        // Clean up uploaded files
+        FileHelper::clearDirectory(public_path('images'));
         $this->cleanupUploadedFiles();
 
-        // Download the PDF
-        return $pdf->download($filename);
+        return $response;
+    }
+
+    private function buildPdf(array $products)
+    {
+        $Arabic = new Arabic;
+
+        foreach ($products as &$item) {
+            $item['data']['description'] = $item['data']['description']
+                ? $Arabic->utf8Glyphs($item['data']['description'])
+                : $item['data']['code'];
+            $item['data']['size'] = $Arabic->utf8Glyphs((string) $item['data']['size']);
+            $item['data']['unit'] = $Arabic->utf8Glyphs((string) $item['data']['unit']);
+        }
+        unset($item);
+
+        return Pdf::loadView('products.pdf', compact('products', 'Arabic'))
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => false,
+                'isPhpEnabled' => false,
+                'isFontSubsettingEnabled' => true,
+                'dpi' => 96,
+                'defaultFont' => 'serif',
+                'chroot' => base_path(),
+            ]);
+    }
+
+    private function redirectToUpload()
+    {
+        return redirect()->route('landing')
+            ->with('error', 'Uploaded files were not found. Please upload your PDF and Excel files again.');
     }
 
     private function getFilename()
     {
-        $pdfName = Session::get('uploaded_pdf_name', pathinfo($this->pdfPath, PATHINFO_FILENAME));
+        $pdfName = Session::get('uploaded_pdf_name', 'Catalog');
 
         return $pdfName.'_Catalog.pdf';
     }
 
     private function processData()
     {
-        $spreadsheet = IOFactory::load($this->excelPath);
+        $reader = IOFactory::createReaderForFile($this->excelPath);
+        $reader->setReadDataOnly(true);
+        $spreadsheet = $reader->load($this->excelPath);
         $worksheet = $spreadsheet->getActiveSheet();
 
         $products = [];
@@ -130,7 +130,7 @@ class ProductPdfController extends Controller
                 continue;
             }
 
-            $cellIterator = $row->getCellIterator();
+            $cellIterator = $row->getCellIterator('A', 'G');
             $cellIterator->setIterateOnlyExistingCells(false);
 
             $data = [];
@@ -183,27 +183,14 @@ class ProductPdfController extends Controller
             }
         }
 
-        return $products;
-    }
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet);
 
-    private function loadBase64Images(&$products)
-    {
-        foreach ($products as &$item) {
-            $path = $item['image_path'];
-            if ($path && file_exists($path)) {
-                $data = file_get_contents($path);
-                $item['image_base64'] = 'data:image/jpeg;base64,'.base64_encode($data);
-                unset($data);
-            } else {
-                $item['image_base64'] = null;
-            }
-        }
-        gc_collect_cycles();
+        return $products;
     }
 
     private function cleanupUploadedFiles()
     {
-        // Clean up the uploaded files from public/uploads directory
         $uploadsDir = public_path('uploads');
 
         if (is_dir($uploadsDir)) {
@@ -215,8 +202,8 @@ class ProductPdfController extends Controller
             }
         }
 
-        // Also clear session data
-        Session::forget('uploaded_pdf_path');
         Session::forget('uploaded_excel_path');
+        Session::forget('uploaded_excel_name');
+        Session::forget('uploaded_pdf_name');
     }
 }

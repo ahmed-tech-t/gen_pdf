@@ -4,49 +4,51 @@
 <div class="max-w-2xl mx-auto">
     <div class="bg-white rounded-lg shadow-md p-8">
         <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">Upload Product Files</h1>
+
+        @if (session('error'))
+            <div class="mb-6 rounded-md bg-red-50 border border-red-200 p-4 text-red-700">
+                {{ session('error') }}
+            </div>
+        @endif
         
-        <form id="uploadForm" action="{{ route('upload.process') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+        <form id="uploadForm" class="space-y-6">
             @csrf
+            <input type="hidden" id="pdf_path" name="pdf_path">
+            <input type="hidden" id="excel_path" name="excel_path">
             
-            <!-- PDF File Upload -->
+            <!-- PDF File -->
             <div>
-                <label for="pdf_file" class="block text-sm font-medium text-gray-700 mb-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
                     PDF File *
                 </label>
-                <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
+                <div data-browse="pdf" data-target="pdf_path" data-name="pdf_file_name" role="button" tabindex="0"
+                    class="browse-box cursor-pointer mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
                     <div class="space-y-1 text-center">
                         <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                             <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
-                        <div class="flex text-sm text-gray-600">
-                            <label for="pdf_file" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                                <span>Upload a PDF file</span>
-                                <input id="pdf_file" name="pdf_file" type="file" accept=".pdf" class="sr-only" required>
-                            </label>
-                            <p class="pl-1">or drag and drop</p>
+                        <div class="flex justify-center text-sm text-gray-600">
+                            <span class="browse-label font-medium text-indigo-600 hover:text-indigo-500">Choose a PDF file</span>
                         </div>
-                        <p class="text-xs text-gray-500">PDF up to 10MB</p>
+                        <p class="text-xs text-gray-500">PDF files</p>
                     </div>
                 </div>
                 <div id="pdf_file_name" class="mt-2 text-sm text-gray-600 hidden"></div>
             </div>
 
-            <!-- Excel File Upload -->
+            <!-- Excel File -->
             <div>
-                <label for="excel_file" class="block text-sm font-medium text-gray-700 mb-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
                     Excel File *
                 </label>
-                <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
+                <div data-browse="excel" data-target="excel_path" data-name="excel_file_name" role="button" tabindex="0"
+                    class="browse-box cursor-pointer mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
                     <div class="space-y-1 text-center">
                         <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                             <path d="M9 12H4v6h5m12-6h-5v6h5M9 24H4v6h5m12-6h-5v6h5M9 36H4v6h5m12-6h-5v6h5M20 4H8a2 2 0 00-2 2v36a2 2 0 002 2h20a2 2 0 002-2V10l-8-6z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
-                        <div class="flex text-sm text-gray-600">
-                            <label for="excel_file" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                                <span>Upload an Excel file</span>
-                                <input id="excel_file" name="excel_file" type="file" accept=".xlsx,.xls" class="sr-only" required>
-                            </label>
-                            <p class="pl-1">or drag and drop</p>
+                        <div class="flex justify-center text-sm text-gray-600">
+                            <span class="browse-label font-medium text-indigo-600 hover:text-indigo-500">Choose an Excel file</span>
                         </div>
                         <p class="text-xs text-gray-500">Excel files only</p>
                     </div>
@@ -81,38 +83,63 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const pdfFile = document.getElementById('pdf_file');
-        const excelFile = document.getElementById('excel_file');
+        const pdfPath = document.getElementById('pdf_path');
+        const excelPath = document.getElementById('excel_path');
         const submitBtn = document.getElementById('submitBtn');
-        const pdfFileName = document.getElementById('pdf_file_name');
-        const excelFileName = document.getElementById('excel_file_name');
         const uploadForm = document.getElementById('uploadForm');
         const loadingOverlay = document.getElementById('loadingOverlay');
+        const boxes = document.querySelectorAll('.browse-box');
+        let browsing = false;
 
-        // Update file name display and button state
+        // Update button state
         function updateFormState() {
-            const pdfSelected = pdfFile.files.length > 0;
-            const excelSelected = excelFile.files.length > 0;
-            
-            submitBtn.disabled = !(pdfSelected && excelSelected);
-            
-            if (pdfSelected) {
-                pdfFileName.textContent = `Selected: ${pdfFile.files[0].name}`;
-                pdfFileName.classList.remove('hidden');
-            } else {
-                pdfFileName.classList.add('hidden');
-            }
-            
-            if (excelSelected) {
-                excelFileName.textContent = `Selected: ${excelFile.files[0].name}`;
-                excelFileName.classList.remove('hidden');
-            } else {
-                excelFileName.classList.add('hidden');
-            }
+            submitBtn.disabled = !(pdfPath.value && excelPath.value);
         }
 
-        pdfFile.addEventListener('change', updateFormState);
-        excelFile.addEventListener('change', updateFormState);
+        function browse(box) {
+            if (browsing) {
+                return;
+            }
+            browsing = true;
+
+            const target = document.getElementById(box.dataset.target);
+            const nameDisplay = document.getElementById(box.dataset.name);
+            const label = box.querySelector('.browse-label');
+            const originalLabel = label.textContent;
+            label.textContent = 'Choose in the dialog...';
+
+            fetch('{{ route("upload.browse") }}?type=' + box.dataset.browse, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message || 'Could not open the file dialog');
+                }
+                if (data.path) {
+                    target.value = data.path;
+                    nameDisplay.textContent = 'Selected: ' + data.path.split(/[\\/]/).pop();
+                    nameDisplay.title = data.path;
+                    nameDisplay.classList.remove('hidden');
+                    updateFormState();
+                }
+            })
+            .catch(error => alert('Error: ' + error.message))
+            .finally(() => {
+                label.textContent = originalLabel;
+                browsing = false;
+            });
+        }
+
+        boxes.forEach(function(box) {
+            box.addEventListener('click', () => browse(box));
+            box.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    browse(box);
+                }
+            });
+        });
 
         uploadForm.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -120,7 +147,7 @@
 
             const formData = new FormData(uploadForm);
 
-            fetch('{{ route("upload.process") }}', {
+            fetch('{{ route("upload.local") }}', {
                 method: 'POST',
                 body: formData,
                 headers: {

@@ -121,8 +121,8 @@
             <h1 class="title">{{ $item['data']['description'] ?? 'Product' }}</h1>
 
             <div class="image-container">
-                @if($item['image_base64'])
-                    <img src="{{ $item['image_base64'] }}" class="full-image">
+                @if($item['image_path'])
+                    <img src="{{ $item['image_path'] }}" class="full-image">
                 @endif
             </div>
 
